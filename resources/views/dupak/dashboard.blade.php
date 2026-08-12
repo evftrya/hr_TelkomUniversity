@@ -1,234 +1,394 @@
 @extends('layouts.app')
 
 @section('content')
+<div x-data="{ tab: 'personal', showImageModal: true }">
+<x-dupak.popup-tambah-kegiatan :kegiatanUtama="$kegiatanUtama" :pengajuanId="$submissions['latest']->id ?? null" />
 
-<x-dupak.popup-tambah-kegiatan />
-<div class="mt-4">
+{{-- Modal Pop-up Gambar (Dismissible) --}}
+<div x-show="showImageModal" 
+     x-transition:enter="transition ease-out duration-200"
+     x-transition:enter-start="opacity-0"
+     x-transition:enter-end="opacity-100"
+     x-transition:leave="transition ease-in duration-150"
+     x-transition:leave-start="opacity-100"
+     x-transition:leave-end="opacity-0"
+     @keydown.escape.window="showImageModal = false"
+     class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/75 backdrop-blur-sm"
+     x-cloak>
+    
+    {{-- Backdrop (Klik luar untuk close) --}}
+    <div class="fixed inset-0" @click="showImageModal = false"></div>
+
+    {{-- Container Modal --}}
+    <div class="relative bg-white rounded-xl shadow-2xl overflow-hidden max-w-4xl w-full max-h-[90vh] flex flex-col z-10">
+        
+        {{-- Header & Tombol Close (X) di Atas --}}
+        <div class="flex items-center justify-between px-4 py-3 bg-gray-100 border-b border-gray-200 shrink-0">
+            <span class="text-sm font-semibold text-gray-700">Panduan / Informasi DUPAK</span>
+            <button @click="showImageModal = false" 
+                    type="button"
+                    class="text-gray-400 hover:text-gray-700 hover:bg-gray-200 rounded-lg p-1.5 transition-colors focus:outline-none">
+                <i class="fas fa-times text-lg"></i>
+            </button>
+        </div>
+
+        {{-- Container Gambar (Responsive & Auto Scroll jika terlalu panjang) --}}
+        <div class="p-4 overflow-y-auto flex-1 bg-gray-50 flex items-center justify-center">
+            <img src="{{ asset('images/info_dupak.png') }}" 
+                 alt="Panduan DUPAK" 
+                 class="w-auto h-auto max-w-full max-h-[70vh] object-contain rounded shadow-sm">
+        </div>
+
+        {{-- Footer --}}
+        <div class="px-4 py-3 bg-white border-t border-gray-100 flex justify-end shrink-0">
+            <button @click="showImageModal = false" 
+                    type="button"
+                    class="px-4 py-2 bg-gray-800 hover:bg-gray-900 text-white text-xs font-semibold rounded-lg transition">
+                Tutup
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="py-6">
     <div class="mx-auto max-w-7xl sm:px-6 lg:px-8">
-        <a href="{{ route('home') }}" class="inline-flex items-center text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 mb-2">
+        <a href="{{ route('dashboard') }}" class="inline-flex items-center text-gray-500 hover:text-gray-700 mb-2">
             <i class="fas fa-arrow-left mr-2"></i> Kembali
         </a>
-        {{-- CARD: Informasi KUM --}}
-        <div class="bg-white shadow rounded-lg p-6">
-            <h1 class="text-2xl font-semibold mb-6">Selamat Datang Di Dasbor DUPAK</h1>
 
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {{-- Statistik Admin --}}
+        @if ($user->is_admin)
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <div class="p-4 border rounded-lg border-blue-100 bg-white shadow-sm">
+                <span class="text-xs font-semibold text-blue-600 uppercase">Total Pengajuan</span>
+                <div class="text-2xl font-bold text-blue-900">{{ $totalSeluruhPengajuan ?? 0 }}</div>
+            </div>
+            <div class="p-4 border rounded-lg border-green-100 bg-white shadow-sm">
+                <span class="text-xs font-semibold text-green-600 uppercase">Pengajuan Selesai</span>
+                <div class="text-2xl font-bold text-green-900">{{ $statistik['selesai'] ?? 0 }}</div>
+            </div>
+            <div class="p-4 border rounded-lg border-yellow-100 bg-white shadow-sm">
+                <span class="text-xs font-semibold text-yellow-600 uppercase">Perlu Validasi</span>
+                <div class="text-2xl font-bold text-yellow-900">{{ $statistik['pending'] ?? 0 }}</div>
+            </div>
+            <div class="p-4 border rounded-lg border-emerald-100 bg-white shadow-sm">
+                <span class="text-xs font-semibold text-emerald-600 uppercase">Dosen Eligible</span>
+                <div class="text-2xl font-bold text-emerald-900">{{ $totalDosenEligible ?? 0 }}</div>
+            </div>
+        </div>
+        @endif
 
-                {{-- Informasi Kum Container --}}
-                <!-- jika user adalah admin, tapi bukan dosen -->
-                @if (!$userIsAdminButNotDosen)
-                <div class="md:col-span-2 p-6 border rounded-lg">
-                    <div class="flex justify-between items-start">
-
-                        <div>
-                            <h3 class="text-lg font-medium text-gray-900">Informasi KUM</h3>
-                            <p class="text-sm text-gray-600">Ringkasan KUM, jabatan, dan progress</p>
-                        </div>
-                        <div class="text-right">
-                            <span class="text-xs text-gray-500">Jabatan</span>
-                            <div class="text-sm font-semibold">{{ $jfa['current'] ?? 'Belum diisi' }}</div>
-                        </div>
-                    </div>
-
-                    {{-- KUM Numbers --}}
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
-                        <div>
-                            <span class="text-xs text-gray-500">KUM Saat Ini</span>
-                            <div class="text-2xl font-bold text-blue-900">
-                                {{ $kum['current'] }}
-                            </div>
-                        </div>
-
-                        <div>
-                            <span class="text-xs text-gray-500">Target KUM ({{ $jfa['next'] ?? 'Belum diisi' }})</span>
-                            <div class="text-lg font-semibold">
-                                {{ $kum['target'] }}
-                            </div>
-                        </div>
-
-                        <div>
-                            <span class="text-xs text-gray-500">Tersisa</span>
-                            <div class="text-lg font-semibold">
-                                {{ $kum['remaining'] }}
-                            </div>
-                        </div>
-                    </div>
-
-                    {{-- Progress Bar --}}
-                    <div class="mt-4">
-                        <div class="flex justify-between text-sm text-gray-600">
-                            <span>Progress menuju target</span>
-                            <span class="font-medium">{{ number_format($kum['percent'], 0) }}%</span>
-                        </div>
-
-                        <div class="w-full h-4 bg-gray-200 rounded-full mt-2 overflow-hidden">
-                            <div id="progress-bar" class="h-full {{ $kum['statusColor'] }}" data-percent="{{ $kum['percent'] }}"></div>
-                        </div>
-
-                        <div class="text-xs text-gray-500 mt-2">
-                            Terakhir diperbarui: {{ $kum['updatedAtFormatted'] ?? 'Tidak tersedia' }}
-                        </div>
-                    </div>
-
-                    {{-- Action Buttons - Flex (Horizontal) --}}
-                    <div class="flex gap-2 mt-4">
-                        <!-- Detail Kegiatan berdasarkan pengajuan riwayat paling baru  : Jika button ini tidak dapat dipencet -->
-                        <a href="{{ route('dupak.pengajuan.show', $submissions['latest'] ?? 'null') }}" class="px-4 py-2 text-sm text-white bg-blue-900 rounded hover:bg-blue-950">Detail Kegiatan</a>
-
-                        <!-- Tambahkan Kegiatan : Jika belum memiliki pengajuan button dan modal di disable -->
-                        <a onclick="openModal()" class="px-4 py-2 text-sm text-blue-900 border border-blue-900 rounded hover:bg-indigo-50">Tambahkan Kegiatan</a>
-                    </div>
-                </div>
+        <div class="bg-white shadow rounded-t-lg p-6 pb-0">
+            <h1 class="text-2xl font-semibold mb-6">
+                Dasbor DUPAK
+                @if ($user->is_admin)
+                <span class="text-sm text-gray-500 font-normal">(Admin)</span>
                 @endif
-                <!-- Identitas Dosen dan/atau TPA yang memiliki status kepegawaian dosen -->
-                @if (isset($user) && isset($dosen))
-                <div class="p-6 border rounded-lg">
-                    <h3 class="text-lg font-medium text-gray-900 mb-4">Identitas Pengaju</h3>
-                    <div class="space-y-2 text-sm text-gray-700">
-                        <div><span class="font-semibold">Nama:</span> {{ $user->nama_lengkap ?? 'N/A' }}</div>
-                        <div><span class="font-semibold">NIDN:</span> {{ $dosen->nidn ?? 'N/A' }}</div>
-                        <div><span class="font-semibold">Jabatan Saat Ini:</span> {{ $jfa['current'] ?? 'Belum diisi' }}</div>
-                        <div><span class="font-semibold">NIK:</span> {{ $user->nik ?? 'N/A' }}</div>
-                    </div>
-                </div>
+            </h1>
+
+            <div class="flex space-x-4 border-b border-gray-200">
+                <button @click="tab = 'personal'"
+                    :class="tab === 'personal' ? 'border-blue-900 text-blue-900' : 'border-transparent text-gray-500 hover:text-gray-700'"
+                    class="px-4 py-2 font-semibold border-b-2 transition-colors">
+                    DUPAK Pribadi
+                </button>
+
+                @if($isTpak)
+                <button @click="tab = 'tpak'"
+                    :class="tab === 'tpak' ? 'border-blue-900 text-blue-900' : 'border-transparent text-gray-500 hover:text-gray-700'"
+                    class="px-4 py-2 font-semibold border-b-2 transition-colors flex items-center">
+                    Penugasan TPAK
+                    <span class="ml-2 px-2 py-0.5 bg-blue-900 text-white rounded-full text-xs">
+                        {{ $penugasanTpak->count() }}
+                    </span>
+                </button>
                 @endif
 
-                {{-- Validasi Card (Admin Only) --}}
-                @if (auth()->user()->is_admin)
-                <div class="p-6 border rounded-lg">
-                    <h3 class="text-lg font-medium">Validasi DUPAK</h3>
-                    <p class="text-gray-600 mb-4">Validasi pengajuan dari pegawai.</p>
-                    <a href="{{ route('dupak.validasi.index') }}" class="px-4 py-2 bg-blue-900 text-white rounded hover:bg-blue-950">
-                        Validasi Pengajuan
-                    </a>
-                </div>
-                @endif
-
+                {{-- TAB NOTIFIKASI --}}
+                <button @click="tab = 'notifikasi'"
+                    :class="tab === 'notifikasi' ? 'border-blue-900 text-blue-900' : 'border-transparent text-gray-500 hover:text-gray-700'"
+                    class="px-4 py-2 font-semibold border-b-2 transition-colors flex items-center">
+                    Notifikasi
+                    <span class="ml-2 px-2 py-0.5 bg-red-600 text-white rounded-full text-xs">
+                        {{ count($notifications ?? []) }}
+                    </span>
+                </button>
             </div>
         </div>
 
-        {{-- DAFTAR PENGAJUAN --}}
-        <div class="bg-white shadow rounded-lg p-6 mt-10">
+        <div class="bg-white shadow rounded-b-lg p-6">
 
-            <div class="flex justify-between items-center mb-6">
-                <h1 class="text-2xl font-semibold">
-                    Daftar Pengajuan DUPAK
-                    @if ($user->is_admin)
-                    (Admin)
+            {{-- TAB PERSONAL --}}
+            <div x-show="tab === 'personal'">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+
+                    {{-- Kolom Kiri: Informasi KUM / Status Profil --}}
+                    <div class="lg:col-span-2">
+                        @if (($user->is_admin || $isTpak) && !$dosen)
+                        <div class="p-6 border rounded-lg bg-yellow-50 border-yellow-200 text-yellow-800 text-sm">
+                            <i class="fas fa-exclamation-triangle mr-2"></i>
+                            Anda terdaftar sebagai Admin/TPAK namun bukan Dosen. Pengajuan DUPAK hanya dapat dilakukan oleh Dosen. Hubungi Admin SDM untuk proses pengubahan jabatan apabila terdapat kesalahan data.
+                        </div>
+                        @elseif (!$user->is_admin && !$isTpak && !$dosen)
+                        <div class="p-6 border rounded-lg bg-red-50 border-red-200 text-red-800 text-sm text-center">
+                            <i class="fas fa-ban mr-2"></i> Anda tidak memiliki izin untuk mengakses halaman ini.
+                        </div>
+                        @else
+                        @if($isProfileIncomplete)
+                        <div class="p-8 border rounded-lg bg-yellow-50 border-yellow-200 text-yellow-800 text-sm min-h-[250px] flex items-center">
+                            <div class="flex items-start">
+                                <i class="fas fa-exclamation-triangle mt-1 mr-4 text-2xl text-yellow-600 animate-pulse"></i>
+                                <div>
+                                    <h4 class="font-semibold text-yellow-900 mb-2 text-base">Profil Belum Lengkap</h4>
+                                    <p class="text-yellow-700 leading-relaxed">
+                                        Data profil Anda belum lengkap di sistem. Untuk dapat mengajukan DUPAK baru, Anda wajib memiliki data di bawah ini:
+                                    </p>
+                                    <ul class="list-disc list-inside mt-3 text-yellow-700 space-y-1.5 font-medium">
+                                        <li>NIK / NIP pada akun Anda.</li>
+                                        <li>NIDN atau NIDK pada data Dosen.</li>
+                                        <li>Data Riwayat JFA yang aktif.</li>
+                                    </ul>
+                                    <p class="mt-4 text-yellow-700 text-xs italic">
+                                        *Silakan hubungi Admin SDM / Kepegawaian untuk melengkapi data tersebut.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        @else
+                        @if($submissions['latest'])
+                        @include('partials.dupak.info-kum')
+                        @else
+                        <div class="p-10 border-2 border-dashed border-gray-300 text-center rounded-lg">
+                            <p class="text-gray-500">Belum ada pengajuan aktif.</p>
+
+                            {{-- CHECK 1: Apakah sudah Guru Besar --}}
+                            @if($isMaxJfa)
+                            <div class="mt-4 p-3 bg-green-50 border border-green-300 text-green-800 rounded-md text-sm">
+                                <i class="fas fa-check-circle mr-1"></i>
+                                Anda telah mencapai jabatan tertinggi (Guru Besar). Tidak perlu pengajuan kenaikan jabatan lagi.
+                            </div>
+
+                            {{-- CHECK 2: Apakah BELUM Eligible (Sesuaikan variabel dari Controller) --}}
+                            @elseif(isset($isEligible) && !$isEligible)
+                            <div class="mt-4 p-4 bg-red-50 border border-red-200 text-red-700 rounded-md text-sm inline-block text-left max-w-lg">
+                                <div class="flex items-center gap-2 font-semibold mb-1">
+                                    <i class="fas fa-times-circle text-red-600"></i>
+                                    <span>Belum Eligible untuk Pengajuan Baru</span>
+                                </div>
+                                <p class="text-xs text-red-600 leading-relaxed">
+                                    Masa kerja/TMT jabatan Anda belum memenuhi syarat minimal untuk mengajukan kenaikan jabatan fungsional berikutnya.
+                                </p>
+                                <button disabled class="mt-3 px-4 py-2 bg-gray-300 text-gray-500 rounded cursor-not-allowed text-xs font-medium">
+                                    <i class="fas fa-lock mr-1"></i> Buat Pengajuan Baru
+                                </button>
+                            </div>
+
+                            {{-- CHECK 3: Jika lolos semua baru tampilkan Tombol Aktif --}}
+                            @else
+                            <a href="{{ route('dupak.pengajuan.create', ['userId' => $user->id]) }}" class="mt-4 inline-block bg-blue-900 text-white px-4 py-2 rounded hover:bg-blue-950 text-sm font-medium">
+                                Buat Pengajuan Baru
+                            </a>
+                            @endif
+                        </div>
+                        @endif
+                        @endif
+                        @endif
+                    </div>
+
+                    {{-- Kolom Kanan: Identitas & Aksi --}}
+                    <div id="containerRightSide" class="space-y-6">
+                        @if (isset($user) && isset($dosen))
+                        <div class="p-6 border rounded-lg bg-white shadow-sm">
+                            <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                                <i class="fas fa-user-circle mr-2 text-blue-900"></i> Identitas Pengaju
+                            </h3>
+                            <div class="space-y-2 text-sm text-gray-700">
+                                <div class="flex justify-between border-b border-gray-50 pb-1"><span class="text-gray-500">Nama:</span> <span class="font-medium">{{ $user->nama_lengkap ?? 'N/A' }}</span></div>
+                                <div class="flex justify-between border-b border-gray-50 pb-1"><span class="text-gray-500">NIDN:</span> <span class="font-medium">{{ $dosen->nidn ?? 'N/A' }}</span></div>
+                                <div class="flex justify-between border-b border-gray-50 pb-1"><span class="text-gray-500">Jabatan:</span> <span class="font-medium">{{ $jfa['current'] ?? 'Belum diisi' }}</span></div>
+                                <div class="flex justify-between"><span class="text-gray-500">NIK:</span> <span class="font-medium">{{ $user->nik ?? 'N/A' }}</span></div>
+                            </div>
+                        </div>
+                        @endif
+
+                        @if (auth()->user()->is_admin)
+                        <div class="p-6 border rounded-lg bg-white shadow-sm border-l-4 border-l-blue-900">
+                            <h3 class="text-lg font-semibold text-gray-900 mb-2">Validasi DUPAK</h3>
+                            <p class="text-sm text-gray-600 mb-4">Menu untuk melakukan verifikasi dan validasi butir kegiatan yang diajukan dosen.</p>
+                            <a href="{{ route('dupak.validasi.index') }}" class="px-4 py-2 bg-blue-900 text-white rounded hover:bg-blue-950 text-sm inline-block">
+                                Validasi Pengajuan
+                            </a>
+                        </div>
+
+                        <div class="p-6 border rounded-lg bg-white shadow-sm border-l-4 border-l-blue-900">
+                            <h3 class="text-lg font-medium">Pengelolaan TPAK</h3>
+                            <p class="text-gray-600 mb-4 text-sm">Kelola penunjukan TPAK</p>
+                            <a href="{{ route('dupak.penunjukan_tpak.index') }}" class="px-4 py-2 bg-blue-900 text-white rounded hover:bg-blue-950 text-sm inline-block">
+                                Kelola TPAK
+                            </a>
+                        </div>
+
+                        <div class="p-6 border rounded-lg bg-white shadow-sm border-l-4 border-l-blue-900">
+                            <h3 class="text-lg font-medium">Eligibiilitas Dosen</h3>
+                            <p class="text-gray-600 mb-4 text-sm">Melihat Data Dosen Yang Eligibel Untuk Pengajuan DUPAK</p>
+                            <a href="{{ route('dupak.eligibilitas') }}" class="px-4 py-2 bg-blue-900 text-white rounded hover:bg-blue-950 text-sm inline-block">
+                                Daftar Eligibilitas Dosen
+                            </a>
+                        </div>
+                        @endif
+                    </div>
+                </div>
+
+                {{-- Daftar Pengajuan --}}
+                <div class="mt-10">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-xl font-semibold">Daftar Pengajuan DUPAK</h3>
+                    </div>
+
+                    @if(!$user->is_admin && $submissions['has_pending'])
+                    @php
+                    $latestSub = $submissions['latest'];
+                    $isEditable = $latestSub && in_array($latestSub->status, ['Draft', 'Pending', 'Revisi']);
+                    @endphp
+                    @if($isEditable)
+                    <div class="mb-4 p-3 bg-yellow-50 border border-yellow-300 text-yellow-700 rounded flex items-center gap-2">
+                        <i class="fas fa-edit text-yellow-600"></i>
+                        <span>Lengkapi detail kegiatan pada pengajuan aktif Anda (Draft), lalu kirimkan untuk dinilai TPAK.</span>
+                    </div>
+                    @else
+                    <div class="mb-4 p-3 bg-blue-50 border border-blue-200 text-blue-700 rounded flex items-center gap-2">
+                        <i class="fas fa-info-circle text-blue-600"></i>
+                        <span>Pengajuan DUPAK Anda saat ini sedang dinilai oleh TPAK. Pembuatan pengajuan baru akan terbuka setelah penilaian selesai.</span>
+                    </div>
                     @endif
-                </h1>
+                    @endif
 
-                <!-- Jika user bukan admin, maka tombol pengajuan akan muncul -->
-                @if (!$user->is_admin)
-                @php
-                $buttonDisabled = $submissions['has_pending'];
-                @endphp
+                    @if(!$user->is_admin && $isMaxJfa)
+                    <div class="mb-4 p-3 bg-green-50 border border-green-300 text-green-800 rounded">
+                        <i class="fas fa-check-circle mr-1"></i>
+                        Anda sudah mencapai jabatan fungsional tertinggi (Guru Besar). Pengajuan kenaikan jabatan tidak tersedia.
+                    </div>
+                    @endif
 
-                <a href="{{ $buttonDisabled ? '#' : route('dupak.pengajuan.create', ['userId' => $user->id]) }}"
-                    class="px-4 py-2 text-xs font-semibold text-white uppercase rounded-md
-                               {{ $buttonDisabled
-                                    ? 'bg-gray-400 cursor-not-allowed opacity-60'
-                                    : 'bg-blue-900 hover:bg-blue-950' }}">
-                    Buat Pengajuan Baru
-                </a>
-                @endif
+                    @include('partials.dupak.table-pribadi')
+                </div>
             </div>
 
-            {{-- Jika memiliki pengajuan dengan status pending, maka user akan diberikan informasi  --}}
-            @if(!$user->is_admin && $submissions['has_pending'])
-            <div class="mb-4 p-3 bg-yellow-50 border border-yellow-300 text-yellow-700 rounded">
-                Lengkapi detail kegiatan hingga memenuhi syarat pengajuan baru.
+            {{-- TAB TPAK --}}
+            @if($isTpak)
+            <div x-show="tab === 'tpak'" x-cloak>
+                <div class="p-4 border-l-4 border-blue-900 bg-blue-50 mb-6">
+                    <p class="text-sm text-blue-900 font-medium">
+                        Anda ditugaskan sebagai Tim Penilai (TPAK) untuk pengajuan berikut:
+                    </p>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200 rounded-b-lg">
+                        <thead class="bg-blue-900 text-white text-xs uppercase">
+                            <tr>
+                                <th class="px-6 py-3 text-left">Dosen Pengaju</th>
+                                <th class="px-6 py-3 text-left">Periode</th>
+                                <th class="px-6 py-3 text-center">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200">
+                            @foreach($penugasanTpak as $tugas)
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-6 py-4">
+                                    <div class="text-sm font-bold text-gray-900">
+                                        {{ $tugas->pengajuan->dosen->pegawai->nama_lengkap ?? 'Nama tidak ditemukan' }}
+                                    </div>
+                                    <div class="text-xs text-gray-500">NIDN: {{ $tugas->pengajuan->dosen->nidn ?? '-' }}</div>
+                                </td>
+                                <td class="px-6 py-4 text-sm">
+                                    {{ $tugas->pengajuan->start }} - {{ $tugas->pengajuan->end }}
+                                </td>
+                                <td class="px-6 py-4 text-center">
+                                    <a href="{{ route('dupak.validasi.show', $tugas->pengajuan->id) }}"
+                                        class="inline-block bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded-md text-sm transition">
+                                        Mulai Penilaian
+                                    </a>
+                                </td>
+                            </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
             </div>
             @endif
 
-            @php
-            $thValue = ["ID", "Nama Dosen", "Tanggal", "Periode", "Status", "Aksi"]
-            @endphp
+            {{-- TAB NOTIFIKASI --}}
+            <div x-show="tab === 'notifikasi'" x-cloak>
+                <div class="space-y-4">
+                    @forelse ($notifications ?? [] as $notification)
+                    @php
+                    $urlTarget = $notification->link
+                    ?? $notification->url
+                    ?? $notification->data['url']
+                    ?? null;
+                    @endphp
 
-            {{-- Table --}}
-            <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-blue-900 text-white text-xs uppercase">
-                        <tr>
-                            @foreach ($thValue as $thDataValue)
-                            <th class="px-6 py-3 text-left">{{ $thDataValue }}</th>
-                            @endforeach
-                        </tr>
-                    </thead>
-
-                    <tbody class="divide-y divide-gray-200">
-                        @forelse ($submissions['list'] as $item)
-                        <tr class="hover:bg-gray-50">
-
-                            <td class="px-6 py-4 text-sm font-medium">
-                                {{ str_pad($item->id, 2, '0', STR_PAD_LEFT) }}
-                            </td>
-
-                            <td class="px-6 py-4 text-sm">
-                                {{ $item->dosen->pegawai->nama_lengkap ?? 'N/A' }}
-                            </td>
-
-                            <td class="px-6 py-4 text-sm text-gray-500">
-                                {{ $item->created_at->format('d/m/Y') }}
-                            </td>
-
-                            <td class="px-6 py-4 text-sm text-gray-500">
-                                {{ $item->start }} -
-                                {{ $item->end }}
-                            </td>
-
-                            <td class="px-6 py-4">
-                                @php
-                                $badgeColor = [
-                                'Draft' => 'bg-gray-100 text-gray-800',
-                                'Diajukan' => 'bg-yellow-100 text-yellow-800',
-                                'Menunggu' => 'bg-indigo-100 text-indigo-800',
-                                'Ditolak' => 'bg-red-100 text-red-800',
-                                'Diterima' => 'bg-green-100 text-green-800',
-                                'Revisi' => 'bg-yellow-100 text-yellow-800',
-                                ][$item->status] ?? 'bg-gray-100 text-gray-800';
-                                @endphp
-
-                                <span class="px-2 py-1 text-xs font-semibold rounded-full {{ $badgeColor }}">
-                                    {{ $item->status }}
+                    @if($urlTarget)
+                    <a href="{{ $urlTarget }}" class="p-4 rounded-lg border border-gray-200 bg-gray-50 hover:bg-blue-50/50 hover:border-blue-300 hover:shadow-md transition cursor-pointer flex items-start justify-between group block">
+                        <div class="flex items-start space-x-3">
+                            <div class="mt-1 text-blue-900 group-hover:scale-110 transition-transform">
+                                <i class="fas fa-bell text-lg"></i>
+                            </div>
+                            <div>
+                                <h4 class="text-sm font-semibold text-gray-900">
+                                    {{ $notification->title ?? $notification->data['title'] ?? 'Pemberitahuan System' }}
+                                </h4>
+                                <p class="text-sm text-gray-600 mt-0.5">
+                                    {{ $notification->message ?? $notification->data['message'] ?? 'Tidak ada rincian pesan.' }}
+                                </p>
+                                <span class="text-xs text-gray-400 mt-2 inline-block">
+                                    {{ isset($notification->created_at) ? $notification->created_at->diffForHumans() : '-' }}
                                 </span>
-                            </td>
+                            </div>
+                        </div>
 
-                            {{-- Aksi --}}
-                            <td class="px-6 py-4 text-sm font-medium space-x-2">
-                                <a href="{{ route('dupak.pengajuan.show', $item->id) }}" class="text-blue-600">Lihat</a>
+                        <div class="text-xs font-semibold text-blue-900 group-hover:underline flex items-center space-x-1 shrink-0">
+                            <span>Lihat Detail</span>
+                            <i class="fas fa-chevron-right text-xs group-hover:translate-x-0.5 transition-transform"></i>
+                        </div>
+                    </a>
+                    @else
+                    <div @click="tab = 'tpak'" class="p-4 rounded-lg border border-gray-200 bg-gray-50 hover:bg-blue-50/50 hover:border-blue-300 hover:shadow-md transition cursor-pointer flex items-start justify-between group block">
+                        <div class="flex items-start space-x-3">
+                            <div class="mt-1 text-blue-900 group-hover:scale-110 transition-transform">
+                                <i class="fas fa-bell text-lg"></i>
+                            </div>
+                            <div>
+                                <h4 class="text-sm font-semibold text-gray-900">
+                                    {{ $notification->title ?? $notification->data['title'] ?? 'Pemberitahuan System' }}
+                                </h4>
+                                <p class="text-sm text-gray-600 mt-0.5">
+                                    {{ $notification->message ?? $notification->data['message'] ?? 'Tidak ada rincian pesan.' }}
+                                </p>
+                                <span class="text-xs text-gray-400 mt-2 inline-block">
+                                    {{ isset($notification->created_at) ? $notification->created_at->diffForHumans() : '-' }}
+                                </span>
+                            </div>
+                        </div>
 
-                                @if (!$user->is_admin && in_array($item->status, ['Draft','Revisi']))
-                                <a href="{{ route('dupak.pengajuan.edit', $item->id) }}" class="text-indigo-600">Edit</a>
+                        <div class="text-xs font-semibold text-blue-900 group-hover:underline flex items-center space-x-1 shrink-0">
+                            <span>Lihat Detail</span>
+                            <i class="fas fa-chevron-right text-xs group-hover:translate-x-0.5 transition-transform"></i>
+                        </div>
+                    </div>
+                    @endif
 
-                                <form action="{{ route('dupak.pengajuan.destroy', $item->id) }}" method="POST" class="inline">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button class="text-red-600"
-                                        onclick="return confirm('Hapus pengajuan ini?')">Hapus</button>
-                                </form>
-                                @endif
-
-                                @if ($user->is_admin && $item->status === 'Diajukan')
-                                <a href="{{ route('dupak.validasi.show', $item->id) }}" class="text-green-600">Validasi</a>
-                                @endif
-                            </td>
-
-                        </tr>
-                        @empty
-                        <tr>
-                            <td colspan="6" class="text-center py-10 text-gray-500">
-                                Belum ada data pengajuan.
-                            </td>
-                        </tr>
-                        @endforelse
-                    </tbody>
-                </table>
+                    @empty
+                    <div class="p-10 border-2 border-dashed border-gray-200 text-center rounded-lg text-gray-500">
+                        <i class="fas fa-bell-slash text-3xl mb-2 text-gray-400"></i>
+                        <p class="text-sm">Belum ada notifikasi saat ini.</p>
+                    </div>
+                    @endforelse
+                </div>
             </div>
 
         </div>
-
-
     </div>
 </div>
 
@@ -236,11 +396,12 @@
     document.addEventListener('DOMContentLoaded', function() {
         const progressBar = document.getElementById('progress-bar');
         if (progressBar) {
-            const percent = progressBar.getAttribute('data-percent');
-            progressBar.style.width = percent + '%';
+            requestAnimationFrame(() => {
+                const percent = progressBar.getAttribute('data-percent');
+                progressBar.style.width = percent + '%';
+            });
         }
     });
 </script>
-
+</div>
 @endsection
-<!-- modal untuk tambah kegiatan -->

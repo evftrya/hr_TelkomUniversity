@@ -6,6 +6,12 @@ use App\Http\Controllers\CoeController;
 use App\Http\Controllers\DashboardProdiController;
 use App\Http\Controllers\DosenHasCOEController;
 use App\Http\Controllers\DosenHasKKController;
+use App\Http\Controllers\Dupak\DashboardController;
+use App\Http\Controllers\Dupak\DetilPengajuanController;
+use App\Http\Controllers\Dupak\PengajuanController;
+use App\Http\Controllers\Dupak\PenunjukanTPAKController;
+use App\Http\Controllers\Dupak\RiwayatController;
+use App\Http\Controllers\Dupak\ValidasiController;
 use App\Http\Controllers\EmergencyContactController;
 use App\Http\Controllers\FakultasController;
 use App\Http\Controllers\FormationController;
@@ -126,8 +132,8 @@ Route::middleware(['auth',  \App\Http\Middleware\CekFlashUser::class])->group(fu
     Route::group(['prefix' => 'profile', 'as' => 'profile.'], function () {
         // Route::get('/edit', [ProfileController::class, 'profileNormalisasi'])->name('profile.edit'); //sepertinya tidak terpakai
         Route::get('/personal-information/{idUser}', [ProfileController::class, 'personalInfo'])->name('personal-info'); //done onController (only admin, owner)
-        Route::get('/change-password',function(){
-            return redirect(route('profile.change-password',['idUser' => session('account')['id']]))->with('error_alert', 'Sepertinya anda salah url, Kami sudah membenarkan!.');
+        Route::get('/change-password', function () {
+            return redirect(route('profile.change-password', ['idUser' => session('account')['id']]))->with('error_alert', 'Sepertinya anda salah url, Kami sudah membenarkan!.');
         });
         Route::get('/change-password/{idUser}', [ProfileController::class, 'changePassword'])->name('change-password'); //done onController (only admin, owner)
         Route::post('/update-password/', [ProfileController::class, 'updatePassword'])->name('update-password'); //tdk perlu role
@@ -159,7 +165,6 @@ Route::middleware(['auth',  \App\Http\Middleware\CekFlashUser::class])->group(fu
                 Route::get('/update/{id_jp}/', [RiwayatJenjangPendidikanController::class, 'update'])->name('update'); //done onController (only admin, owner)
                 Route::get('/ijazah/{idUser}/{id_jp}/', [RiwayatJenjangPendidikanController::class, 'view_ijazah'])->name('view-ijazah'); //done onController (only admin, owner)
             });
-
         });
 
         Route::group(['prefix' => 'sk', 'as' => 'sk.'], function () {
@@ -174,20 +179,20 @@ Route::middleware(['auth',  \App\Http\Middleware\CekFlashUser::class])->group(fu
         // })->name('view')->middleware(['admin:{"is_admin":true|"bagian":"sumber daya manusia"}']);
 
         // Route::group(['prefix' => 'account', 'as' => 'account.'], function () {
-            // Route::get('/view', function () {
-            //     return view('kelola_data.manajemen_akun.view');
-            // })->name('view');
+        // Route::get('/view', function () {
+        //     return view('kelola_data.manajemen_akun.view');
+        // })->name('view');
 
-            // Route::get('/list', function () {
-            //     return view('kelola_data.manajemen_akun.list');
-            // })->name('list');
+        // Route::get('/list', function () {
+        //     return view('kelola_data.manajemen_akun.list');
+        // })->name('list');
 
-            // Route::get('/new', function () {
-            //     return view('kelola_data.manajemen_akun.new');
-            // })->name('new');
-            // Route::get('/dashboard', function () {
-            //     return view('kelola_data.manajemen_akun.dashboard');
-            // })->name('dashboard');
+        // Route::get('/new', function () {
+        //     return view('kelola_data.manajemen_akun.new');
+        // })->name('new');
+        // Route::get('/dashboard', function () {
+        //     return view('kelola_data.manajemen_akun.dashboard');
+        // })->name('dashboard');
         // });
 
         Route::group(['prefix' => 'pegawai', 'as' => 'pegawai.'], function () {
@@ -237,18 +242,18 @@ Route::middleware(['auth',  \App\Http\Middleware\CekFlashUser::class])->group(fu
         Route::resource('fakultas', FakultasController::class)->only(['index'])->middleware(['admin:{"is_dosen":true|"is_admin":true|"bagian":"sumber daya manusia"}']);
 
         // Route::group(['prefix' => 'fakultas', 'as' => 'fakultas.'], function () {
-            // Route::get('/view', function () {
-            //     return view('kelola_data.fakultas.view');
-            // })->name('view')->middleware(['admin:admin']);
+        // Route::get('/view', function () {
+        //     return view('kelola_data.fakultas.view');
+        // })->name('view')->middleware(['admin:admin']);
 
-            // Route::get('/list', [FacultyController::class, 'index'])->name('list');
+        // Route::get('/list', [FacultyController::class, 'index'])->name('list');
 
-            // Route::get('/new', function () {
-            //     return view('kelola_data.manajemen_akun.input');
-            // })->name('new')->middleware(['admin:admin']);
-            // Route::get('/dashboard', function () {
-            //     return view('kelola_data.manajemen_akun.dashboard');
-            // })->name('dashboard')->middleware(['admin:admin']);
+        // Route::get('/new', function () {
+        //     return view('kelola_data.manajemen_akun.input');
+        // })->name('new')->middleware(['admin:admin']);
+        // Route::get('/dashboard', function () {
+        //     return view('kelola_data.manajemen_akun.dashboard');
+        // })->name('dashboard')->middleware(['admin:admin']);
         // });
 
         Route::group(['prefix' => 'level', 'as' => 'level.'], function () {
@@ -477,9 +482,7 @@ Route::middleware(['auth',  \App\Http\Middleware\CekFlashUser::class])->group(fu
                 Route::post('/create/', [DosenHasCOEController::class, 'create'])->name('create')->middleware(['admin:{"is_admin":true|"bagian":"sumber daya manusia"}']);
                 Route::post('/update/{id_coe}', [DosenHasCOEController::class, 'update'])->name('update')->middleware(['admin:{"is_admin":true|"bagian":"sumber daya manusia"}']);
                 Route::get('/history/{id_user}', [DosenHasCOEController::class, 'History'])->name('history')->middleware(['admin:{"is_admin":true|"is_dosen":true|"bagian":"sumber daya manusia"}']);
-
             });
-
         });
 
         // Kelompok Keahlian Routes
@@ -511,7 +514,6 @@ Route::middleware(['auth',  \App\Http\Middleware\CekFlashUser::class])->group(fu
                 Route::get('/table/', [DosenHasKKController::class, 'table'])->name('table')->middleware(['admin:{"is_admin":true|"bagian":"sumber daya manusia"|"is_kk":true}']);
                 Route::get('/riwayat/{id_user}', [DosenHasKKController::class, 'riwayat'])->name('riwayat')->middleware(['admin:{"is_admin":true|"bagian":"sumber daya manusia"|"is_kk":true}']);
                 Route::get('/pasang-kembali-dosen/{DosenHasKK_id}', [\App\Http\Controllers\DosenHasKKController::class, 'Aktifkan_Pemetaan'])->name('pasang-kembali-dosen')->middleware(['admin:{"is_admin":true|"bagian":"sumber daya manusia"|"is_kk":true}']);
-
             });
 
             // COE (Center of Excellence) Routes
@@ -588,12 +590,24 @@ Route::middleware(['auth',  \App\Http\Middleware\CekFlashUser::class])->group(fu
         });
 
         // Additional Dashboard & Preview Routes (Merged from old kinerja group)
-        Route::get('/base', function () { return view('kinerja_pegawai.base'); })->name('base');
-        Route::get('/sidebar-preview', function () { return view('kinerja_pegawai.sidebar'); })->name('sidebar-preview');
-        Route::get('/dashboard/fakultas', function () { return view('kinerja_pegawai.dashboard_fakultas.index'); })->name('dashboard.fakultas.index');
-        Route::get('/dashboard/fakultas/{id?}', function ($id = null) { return view('kinerja_pegawai.dashboard_fakultas.detail', ['id' => $id]); })->name('dashboard.fakultas.detail');
-        Route::get('/dashboard/fakultas/input/{id?}', function ($id = null) { return view('kinerja_pegawai.dashboard_fakultas.input', ['id' => $id]); })->name('dashboard.fakultas.input');
-        Route::get('/dashboard/target', function () { return view('kinerja_pegawai.dashboard_target.input'); })->name('dashboard.target.input');
+        Route::get('/base', function () {
+            return view('kinerja_pegawai.base');
+        })->name('base');
+        Route::get('/sidebar-preview', function () {
+            return view('kinerja_pegawai.sidebar');
+        })->name('sidebar-preview');
+        Route::get('/dashboard/fakultas', function () {
+            return view('kinerja_pegawai.dashboard_fakultas.index');
+        })->name('dashboard.fakultas.index');
+        Route::get('/dashboard/fakultas/{id?}', function ($id = null) {
+            return view('kinerja_pegawai.dashboard_fakultas.detail', ['id' => $id]);
+        })->name('dashboard.fakultas.detail');
+        Route::get('/dashboard/fakultas/input/{id?}', function ($id = null) {
+            return view('kinerja_pegawai.dashboard_fakultas.input', ['id' => $id]);
+        })->name('dashboard.fakultas.input');
+        Route::get('/dashboard/target', function () {
+            return view('kinerja_pegawai.dashboard_target.input');
+        })->name('dashboard.target.input');
         Route::get('/dashboard/target/{action}/{id?}', function ($action, $id = null) {
             $action = in_array($action, ['approval', 'edit', 'input']) ? $action : 'detail';
             return view("kinerja_pegawai.dashboard_target.$action", ['id' => $id]);
@@ -611,7 +625,9 @@ Route::middleware(['auth',  \App\Http\Middleware\CekFlashUser::class])->group(fu
         Route::get('/reporting', [\App\Http\Controllers\PelaporanPekerjaanController::class, 'reporting'])->name('laporan.reporting');
         Route::get('/laporan-capaian-tw', [\App\Http\Controllers\TargetKinerjaController::class, 'laporanCapaian'])->name('laporan.capaian-tw');
 
-        Route::get('/laporan/target/{id?}', function ($id = null) { return view('kinerja_pegawai.laporan_target.detail', ['id' => $id]); })->name('laporan.target.detail');
+        Route::get('/laporan/target/{id?}', function ($id = null) {
+            return view('kinerja_pegawai.laporan_target.detail', ['id' => $id]);
+        })->name('laporan.target.detail');
 
         // Role Switcher
         Route::get('/switch-role/{role_name}', [\App\Http\Controllers\TestingSIMDKController::class, 'switchRole'])
@@ -624,26 +640,60 @@ Route::middleware(['auth',  \App\Http\Middleware\CekFlashUser::class])->group(fu
     Route::group([
         'prefix' => 'dupak',
         'as' => 'dupak.',
-        // 'middleware' => ['auth'],
     ], function () {
+        // catatan:
+        // - pengajuan: hanya dosen/pemilik (di controller)
+        // - validasi/flagging: hanya TPAK yang ditunjuk (di ValidasiController via penunjukan_tpak)
+        // - penunjukan-tpak: dibatasi admin/SDM agar hanya TPAK tertentu yang bisa ditugaskan
+
+        // Route::get('/notifikasi/{id}/read', [App\Http\Controllers\DupakNotifikasiController::class, 'markAsReadAndRedirect'])
+        // ->name('dupak.notifikasi.read');
+
         // Dashboard
-        Route::get('/dashboard', [App\Http\Controllers\Dupak\DashboardController::class, 'index'])
+        Route::get('/dashboard', [DashboardController::class, 'index'])
             ->name('dashboard');
 
         // Pengajuan DUPAK
-        Route::resource('pengajuan', \App\Http\Controllers\Dupak\PengajuanController::class)
-            ->except(['edit', 'update', 'destroy']);
+        Route::resource('pengajuan', PengajuanController::class);
+        Route::post('pengajuan/{id}/submit', [PengajuanController::class, 'submit'])
+            ->name('pengajuan.submit');
 
         // Riwayat DUPAK
-        Route::resource('riwayat', \App\Http\Controllers\Dupak\RiwayatController::class)
+        Route::resource('riwayat', RiwayatController::class)
             ->only(['index', 'show']);
 
         // Validasi DUPAK (for admin/validator)
-        Route::resource('validasi', \App\Http\Controllers\Dupak\ValidasiController::class)
-            ->only(['index', 'show', 'update']);
+        Route::resource('validasi', ValidasiController::class)
+            ->only(['index', 'show', 'update', 'store']);
 
-        // Pengisian Detil Formulir Pengajuan
-        Route::resource('detil_pengajuan', \App\Http\Controllers\Dupak\DetilPengajuanController::class);
+        Route::post('validasi/{pengajuan}/detail/{detail}/save', [ValidasiController::class, 'saveDetail'])
+            ->name('validasi.detail.save');
+
+        // Rute Dinamis untuk Input Form Detail Pengajuan
+        Route::get('detil_pengajuan/{category}/{id}', [DetilPengajuanController::class, 'showForm'])
+            ->name('dupak.detil_pengajuan.form');
+
+        // Rute untuk menyimpan data detail pengajuan
+        Route::post('detil_pengajuan/{category}/{id}', [DetilPengajuanController::class, 'store'])
+            ->name('dupak.detil_pengajuan.store');
+
+        // Pengisian Detil Formulir Pengajuan (Resource ditaruh setelah rute spesifik)
+        // Route::resource('detil_pengajuan', \App\Http\Controllers\Dupak\DetilPengajuanController::class);
+
+        // route penunjukan_tpak, tanpa id, karena sistemnya SDM akan menunjuk TPAK berdasarkan kebutuhan, bukan berdasarkan pengajuan tertentu
+        // Hapus "is_dosen":true dan "is_tpa":true jika Dosen/TPA biasa TIDAK boleh mengelola penunjukan TPAK
+        Route::group(['prefix' => 'penunjukan-tpak', 'as' => 'penunjukan_tpak.', 'middleware' => ['admin:{"is_admin":true|"and":{"bagian":"sumber daya manusia"|"range-level":[3|5]}|"range-level":[2|3]}']], function () {
+            Route::get('/', [PenunjukanTPAKController::class, 'index'])->name('index');
+            Route::post('/', [PenunjukanTPAKController::class, 'store'])->name('store');
+            Route::delete('/{id}', [PenunjukanTPAKController::class, 'destroy'])->name('destroy');
+            Route::get('/tambah_tpak_baru', [PenunjukanTPAKController::class, 'create_new_tpak'])->name('create_new_tpak');
+        });
+        // ->middleware(['admin:{"is_admin":true|"bagian":"sumber daya manusia"|"range-level":[3|5]}']);
+
+        Route::get(
+            '/eligibilitas_dosen',
+            [DashboardController::class, 'eligibilitas']
+        )->name('eligibilitas');
     });
 });
 
@@ -661,4 +711,4 @@ Route::middleware(['auth', 'admin:admin'])->prefix('admin')->name('admin.')->gro
 
 
 
-require __DIR__.'/auth.php';
+require __DIR__ . '/auth.php';
