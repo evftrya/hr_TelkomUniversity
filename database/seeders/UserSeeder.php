@@ -217,6 +217,11 @@ class UserSeeder extends Seeder
             'email_verified_at' => now(),
         ]);
 
+        \App\Models\Dosen::factory()->create([
+            'users_id' => $dosenonly->id,
+            // Jika butuh prodi_id dll, bisa disesuaikan atau biarkan factory yang handle
+        ]);
+
         $tpaonly = User::factory()->create([
             'id' => '1122-2211-11aa-aa13',
             'nama_lengkap' => 'Admin',
@@ -300,7 +305,7 @@ class UserSeeder extends Seeder
 
         $make_pengawakan_sdm = null;
         if ($data['Sdm'] == 1) {
-            $find_sdm_bagian = Formation::with(['bagian', 'level_data'])
+            $find_sdm_bagian = Formation::with(['bagian', 'level_id'])
                 ->whereHas('bagian', function ($q) {
                     $q->where('position_name', 'Sumber Daya manusia');
                 })
