@@ -230,7 +230,6 @@
 
     .form-control.visibility-off-custom{
                 visibility: hidden !important;
-
     }
 </style>
 <div class="min-h-[50vh] h-[77vh] max-h-fit pb-4 sticky mb-10 top-0 z-10">
