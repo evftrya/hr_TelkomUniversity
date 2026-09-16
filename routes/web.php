@@ -15,9 +15,14 @@ use App\Http\Controllers\Dupak\ValidasiController;
 use App\Http\Controllers\EmergencyContactController;
 use App\Http\Controllers\FakultasController;
 use App\Http\Controllers\FormationController;
+use App\Http\Controllers\KelompokKeahlianController;
+use App\Http\Controllers\KinerjaDashboardController;
+use App\Http\Controllers\KinerjaExportController;
 use App\Http\Controllers\LevelController;
 use App\Http\Controllers\PegawaiController;
+use App\Http\Controllers\PelaporanPekerjaanController;
 use App\Http\Controllers\PengawakanController;
+use App\Http\Controllers\PresensiController;
 use App\Http\Controllers\ProdiController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RefJabatanFungsionalAkademikController;
@@ -25,7 +30,9 @@ use App\Http\Controllers\RefJabatanFungsionalKeahlianController;
 use App\Http\Controllers\RefJenjangPendidikanController;
 use App\Http\Controllers\RefPangkatGolonganController;
 use App\Http\Controllers\RefResearchCoeController;
+use App\Http\Controllers\RefSatuanController;
 use App\Http\Controllers\RefStatusPegawaiController;
+use App\Http\Controllers\RefSubKelompokKeahlianController;
 use App\Http\Controllers\RiwayatJabatanFungsionalAkademikController;
 use App\Http\Controllers\RiwayatJabatanFungsionalKeahlianController;
 use App\Http\Controllers\RiwayatJenjangPendidikanController;
@@ -33,8 +40,13 @@ use App\Http\Controllers\RiwayatNipController;
 use App\Http\Controllers\RiwayatPangkatGolonganController;
 use App\Http\Controllers\SertifikasiDosenController;
 use App\Http\Controllers\SKController;
+use App\Http\Controllers\StudiLanjutController;
+use App\Http\Controllers\TargetKinerjaController;
+use App\Http\Controllers\TargetKinerjaHarianController;
 use App\Http\Controllers\TestingSIMDKController;
 use App\Http\Controllers\WorkPositionController;
+use App\Http\Middleware\CekFlashUser;
+use App\Models\PelaporanPekerjaan;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
@@ -73,31 +85,27 @@ Route::get('/', function () {
 // - Apakah hanya dosen? ("is_dosen":true)
 // - Apakah hanya tpa? ("is_tpa":true)
 
-
-
-
-
 Route::get('/dashboard', function () {
     $user = Auth::user();
 
     // --- Achievement Badges Logic (Fitur 2A5) ---
-    $lastTenReports = \App\Models\PelaporanPekerjaan::where('user_id', $user->id)
+    $lastTenReports = PelaporanPekerjaan::where('user_id', $user->id)
         ->latest()
         ->take(10)
         ->get();
 
     $badges = [
         'reliable' => false,
-        'speedy'   => false
+        'speedy' => false,
     ];
 
     if ($lastTenReports->count() >= 10) {
-        $badges['reliable'] = $lastTenReports->every(fn($rep) => $rep->status === 'approved' || $rep->status === 'completed');
+        $badges['reliable'] = $lastTenReports->every(fn ($rep) => $rep->status === 'approved' || $rep->status === 'completed');
     }
 
     $lastFiveReports = $lastTenReports->take(5);
     if ($lastFiveReports->count() >= 5) {
-        $avgHour = $lastFiveReports->avg(fn($rep) => $rep->created_at->hour);
+        $avgHour = $lastFiveReports->avg(fn ($rep) => $rep->created_at->hour);
         $badges['speedy'] = $avgHour < 17;
     }
 
@@ -123,7 +131,7 @@ Route::group(['prefix' => 'forget-password', 'as' => 'forget-password.'], functi
     // Route::post('/reset-password', [AllAboutAuthController::class, 'reset_password'])->name('reset');
 });
 
-Route::middleware(['auth',  \App\Http\Middleware\CekFlashUser::class])->group(function () {
+Route::middleware(['auth',  CekFlashUser::class])->group(function () {
 
     Route::get('/profile/', function () {
         return redirect(route('profile.personal-info', ['idUser' => session('account')['id']]));
@@ -131,45 +139,44 @@ Route::middleware(['auth',  \App\Http\Middleware\CekFlashUser::class])->group(fu
 
     Route::group(['prefix' => 'profile', 'as' => 'profile.'], function () {
         // Route::get('/edit', [ProfileController::class, 'profileNormalisasi'])->name('profile.edit'); //sepertinya tidak terpakai
-        Route::get('/personal-information/{idUser}', [ProfileController::class, 'personalInfo'])->name('personal-info'); //done onController (only admin, owner)
+        Route::get('/personal-information/{idUser}', [ProfileController::class, 'personalInfo'])->name('personal-info'); // done onController (only admin, owner)
         Route::get('/change-password', function () {
             return redirect(route('profile.change-password', ['idUser' => session('account')['id']]))->with('error_alert', 'Sepertinya anda salah url, Kami sudah membenarkan!.');
         });
-        Route::get('/change-password/{idUser}', [ProfileController::class, 'changePassword'])->name('change-password'); //done onController (only admin, owner)
-        Route::post('/update-password/', [ProfileController::class, 'updatePassword'])->name('update-password'); //tdk perlu role
+        Route::get('/change-password/{idUser}', [ProfileController::class, 'changePassword'])->name('change-password'); // done onController (only admin, owner)
+        Route::post('/update-password/', [ProfileController::class, 'updatePassword'])->name('update-password'); // tdk perlu role
         Route::get('/update_data/{id_user}/', [PegawaiController::class, 'update_data'])->name('update-data');
         Route::post('/update/{id_user}', [PegawaiController::class, 'update'])->name('update');
 
         Route::group(['prefix' => 'emergency-contacts', 'as' => 'emergency-contacts.'], function () {
-            Route::get('/list/{id_User}', [EmergencyContactController::class, 'list'])->name('list'); //done onController (only admin, owner)
-            Route::get('/new/{id_User}', [EmergencyContactController::class, 'new'])->name('new'); //done onController (only admin, owner)
-            Route::post('/new-data/{id_User}', [EmergencyContactController::class, 'new_data'])->name('new-data'); //done onController (only admin, owner)
-            Route::get('/{id_User}/update/{id_emergency_contact}', [EmergencyContactController::class, 'updateView'])->name('updateView'); //done onController (only admin, owner)
-            Route::post('/{id_User}/update-data/{id_emergency_contact}', [EmergencyContactController::class, 'updateData'])->name('updateData'); //done onController (only admin, owner)
+            Route::get('/list/{id_User}', [EmergencyContactController::class, 'list'])->name('list'); // done onController (only admin, owner)
+            Route::get('/new/{id_User}', [EmergencyContactController::class, 'new'])->name('new'); // done onController (only admin, owner)
+            Route::post('/new-data/{id_User}', [EmergencyContactController::class, 'new_data'])->name('new-data'); // done onController (only admin, owner)
+            Route::get('/{id_User}/update/{id_emergency_contact}', [EmergencyContactController::class, 'updateView'])->name('updateView'); // done onController (only admin, owner)
+            Route::post('/{id_User}/update-data/{id_emergency_contact}', [EmergencyContactController::class, 'updateData'])->name('updateData'); // done onController (only admin, owner)
         });
 
         Route::group(['prefix' => 'history', 'as' => 'history.'], function () {
-            Route::get('/{id_user}/pemetaan', [PengawakanController::class, 'history_pemetaan'])->name('pemetaan'); //done onController (only admin, owner)
-            Route::get('/{id_user}/sk', [SKController::class, 'history_sk'])->name('sk'); //done onController (only admin, owner)
-            Route::get('/{id_pegawai}/history-nip', [RiwayatNipController::class, 'history_nip'])->name('nip'); //done onController (only admin, owner)
-            Route::get('/riwayat/{id_user}', [DosenHasKKController::class, 'riwayat'])->name('kelompok-keahlian'); //done onController (only admin, owner) //cek
-            Route::get('/coe/{id_user}', [DosenHasCOEController::class, 'History'])->name('coe'); //done onController (only admin, owner)
-            Route::get('/jfa/{id_user}', [RiwayatJabatanFungsionalAkademikController::class, 'history'])->name('jfa');; //done onController (only admin, owner)
-            Route::get('/jfk/{id_user}', [RiwayatJabatanFungsionalKeahlianController::class, 'history'])->name('jfk');; //done onController (only admin, owner)
-            Route::get('/pangkat-golongan/{id_user}', [RiwayatPangkatGolonganController::class, 'history'])->name('pangkat-golongan');; //done onController (only admin, owner)
-
+            Route::get('/{id_user}/pemetaan', [PengawakanController::class, 'history_pemetaan'])->name('pemetaan'); // done onController (only admin, owner)
+            Route::get('/{id_user}/sk', [SKController::class, 'history_sk'])->name('sk'); // done onController (only admin, owner)
+            Route::get('/{id_pegawai}/history-nip', [RiwayatNipController::class, 'history_nip'])->name('nip'); // done onController (only admin, owner)
+            Route::get('/riwayat/{id_user}', [DosenHasKKController::class, 'riwayat'])->name('kelompok-keahlian'); // done onController (only admin, owner) //cek
+            Route::get('/coe/{id_user}', [DosenHasCOEController::class, 'History'])->name('coe'); // done onController (only admin, owner)
+            Route::get('/jfa/{id_user}', [RiwayatJabatanFungsionalAkademikController::class, 'history'])->name('jfa'); // done onController (only admin, owner)
+            Route::get('/jfk/{id_user}', [RiwayatJabatanFungsionalKeahlianController::class, 'history'])->name('jfk'); // done onController (only admin, owner)
+            Route::get('/pangkat-golongan/{id_user}', [RiwayatPangkatGolonganController::class, 'history'])->name('pangkat-golongan'); // done onController (only admin, owner)
 
             Route::group(['prefix' => 'pendidikan', 'as' => 'pendidikan.'], function () {
-                Route::get('/{idUser}/index', [RiwayatJenjangPendidikanController::class, 'profileRiwayatPendidikan'])->name('index'); //done onController (only admin, owner)
-                Route::get('/new/', [RiwayatJenjangPendidikanController::class, 'new'])->name('new'); //done onController (only admin, owner)
-                Route::get('/update/{id_jp}/', [RiwayatJenjangPendidikanController::class, 'update'])->name('update'); //done onController (only admin, owner)
-                Route::get('/ijazah/{idUser}/{id_jp}/', [RiwayatJenjangPendidikanController::class, 'view_ijazah'])->name('view-ijazah'); //done onController (only admin, owner)
+                Route::get('/{idUser}/index', [RiwayatJenjangPendidikanController::class, 'profileRiwayatPendidikan'])->name('index'); // done onController (only admin, owner)
+                Route::get('/new/', [RiwayatJenjangPendidikanController::class, 'new'])->name('new'); // done onController (only admin, owner)
+                Route::get('/update/{id_jp}/', [RiwayatJenjangPendidikanController::class, 'update'])->name('update'); // done onController (only admin, owner)
+                Route::get('/ijazah/{idUser}/{id_jp}/', [RiwayatJenjangPendidikanController::class, 'view_ijazah'])->name('view-ijazah'); // done onController (only admin, owner)
             });
         });
 
         Route::group(['prefix' => 'sk', 'as' => 'sk.'], function () {
-            Route::get('/{id_sk_or_sk_number}/view', [SKController::class, 'view'])->name('view'); //done onController (only admin, owner)
-            Route::get('/{file_path}/{id_sk}/file', [SKController::class, 'getFile'])->name('file'); //done onController (only admin, owner)
+            Route::get('/{id_sk_or_sk_number}/view', [SKController::class, 'view'])->name('view'); // done onController (only admin, owner)
+            Route::get('/{file_path}/{id_sk}/file', [SKController::class, 'getFile'])->name('file'); // done onController (only admin, owner)
         });
     });
     Route::group(['prefix' => 'manage', 'as' => 'manage.'], function () {
@@ -212,8 +219,8 @@ Route::middleware(['auth',  \App\Http\Middleware\CekFlashUser::class])->group(fu
                 // Route::get('/{idUser}/employee-information', [ProfileController::class, 'employeeInfo'])->name('employee-info')->middleware(['admin:{"is_admin":true|"bagian":"sumber daya manusia"}']);
                 Route::get('/{idUser}/personal-information', [ProfileController::class, 'personalInfo'])->name('personal-info')->middleware(['admin:{"is_admin":true|"bagian":"sumber daya manusia"}']);
                 // Route::get('/{idUser}/riwayat-jabatan', [ProfileController::class, 'riwayatJabatan'])->name('riwayat-jabatan');
-                Route::get('/{idUser}/change-password', [PegawaiController::class, 'changePassword'])->name('change-password')->middleware('admin:{"is_admin":true}'); //done role
-                Route::post('/{idUser}/update-password', [PegawaiController::class, 'updatePassword'])->name('update-password')->middleware('admin:{"is_admin":true}'); //done role
+                Route::get('/{idUser}/change-password', [PegawaiController::class, 'changePassword'])->name('change-password')->middleware('admin:{"is_admin":true}'); // done role
+                Route::post('/{idUser}/update-password', [PegawaiController::class, 'updatePassword'])->name('update-password')->middleware('admin:{"is_admin":true}'); // done role
             });
 
             Route::group(['prefix' => 'import', 'as' => 'import.'], function () {
@@ -300,7 +307,6 @@ Route::middleware(['auth',  \App\Http\Middleware\CekFlashUser::class])->group(fu
             Route::post('/fill-sk-ypt/{id_jfk}/', [RiwayatJabatanFungsionalKeahlianController::class, 'isi_sk_ypt'])->name('fill-sk-ypt')->middleware(['admin:{"is_admin":true|"bagian":"sumber daya manusia"}']);
             Route::get('/riwayat/{id_user}', [RiwayatJabatanFungsionalKeahlianController::class, 'history'])->name('riwayat')->middleware(['admin:{"is_admin":true|"bagian":"sumber daya manusia"}']);
 
-
             Route::group(['prefix' => 'ref', 'as' => 'ref.'], function () {
                 Route::get('/list/', [RefJabatanFungsionalKeahlianController::class, 'list'])->name('list')->middleware(['admin:{"is_admin":true}']);
                 Route::post('/store/', [RefJabatanFungsionalKeahlianController::class, 'store'])->name('store')->middleware(['admin:{"is_admin":true}']);
@@ -339,7 +345,6 @@ Route::middleware(['auth',  \App\Http\Middleware\CekFlashUser::class])->group(fu
             Route::get('/{idUser}/history', [RiwayatJenjangPendidikanController::class, 'profileRiwayatPendidikan'])->name('history')->middleware(['admin:{"is_admin":true|"bagian":"sumber daya manusia"}']);
             Route::get('/ijazah/{idUser}/{id_jp}/', [RiwayatJenjangPendidikanController::class, 'view_ijazah'])->name('view-ijazah')->middleware(['admin:{"is_admin":true|"bagian":"sumber daya manusia"}']);
 
-
             Route::group(['prefix' => 'ref', 'as' => 'ref.'], function () {
                 Route::get('/new/', [RefJenjangPendidikanController::class, 'new'])->name('new')->middleware(['admin:{"is_admin":true}']);
                 Route::get('/edit/', [RefJenjangPendidikanController::class, 'edit'])->name('edit')->middleware(['admin:{"is_admin":true}']);
@@ -365,12 +370,12 @@ Route::middleware(['auth',  \App\Http\Middleware\CekFlashUser::class])->group(fu
             Route::post('/update/{id}', [SKController::class, 'update'])->name('update')->middleware(['admin:{"is_admin":true|"bagian":"sumber daya manusia"}']);
             Route::post('/{YptOrDikti}/new', [SKController::class, 'new'])->name('new')->middleware(['admin:{"is_admin":true|"bagian":"sumber daya manusia"}']);
             Route::post('/simpan', [SKController::class, 'store'])->name('store')->middleware(['admin:{"is_admin":true|"bagian":"sumber daya manusia"}']);
-            Route::get('/{id_sk_or_sk_number}/view', [SKController::class, 'view'])->name('view'); //role sudah diatur di controller krn berhubungan dg profile
+            Route::get('/{id_sk_or_sk_number}/view', [SKController::class, 'view'])->name('view'); // role sudah diatur di controller krn berhubungan dg profile
             // Route::get('/new-dikti/',[SKController::class, 'new'])->name('new-dikti');
 
-            Route::get('/file/{id_sk}', [SKController::class, 'getFile'])->name('file'); //role sudah diatur di controller krn berhubungan dg profile
+            Route::get('/file/{id_sk}', [SKController::class, 'getFile'])->name('file'); // role sudah diatur di controller krn berhubungan dg profile
 
-            Route::get('/history/sk/{id_user}', [SKController::class, 'history_sk'])->name('history'); //role sudah diatur di controller krn berhubungan dg profile
+            Route::get('/history/sk/{id_user}', [SKController::class, 'history_sk'])->name('history'); // role sudah diatur di controller krn berhubungan dg profile
         });
 
         Route::group(['prefix' => 'formasi', 'as' => 'formasi.'], function () {
@@ -414,7 +419,7 @@ Route::middleware(['auth',  \App\Http\Middleware\CekFlashUser::class])->group(fu
 
         // Prodi Routes
         // Route::resource('prodi', ProdiController::class)->only(['create', 'store'])->middleware(['admin:admin']);
-        Route::resource('prodi', ProdiController::class)->except(['edit'])->middleware(['admin:{"is_admin":true|"bagian":"sumber daya manusia"}']);;
+        Route::resource('prodi', ProdiController::class)->except(['edit'])->middleware(['admin:{"is_admin":true|"bagian":"sumber daya manusia"}']);
 
         Route::group(['prefix' => 'prodi', 'as' => 'prodi.'], function () {
             Route::get('/{prodi}/get-cached-stats', [ProdiController::class, 'getCachedStats'])->name('getCachedStats')->middleware(['admin:{"is_admin":true|"bagian":"sumber daya manusia"}']);
@@ -482,38 +487,41 @@ Route::middleware(['auth',  \App\Http\Middleware\CekFlashUser::class])->group(fu
                 Route::post('/create/', [DosenHasCOEController::class, 'create'])->name('create')->middleware(['admin:{"is_admin":true|"bagian":"sumber daya manusia"}']);
                 Route::post('/update/{id_coe}', [DosenHasCOEController::class, 'update'])->name('update')->middleware(['admin:{"is_admin":true|"bagian":"sumber daya manusia"}']);
                 Route::get('/history/{id_user}', [DosenHasCOEController::class, 'History'])->name('history')->middleware(['admin:{"is_admin":true|"is_dosen":true|"bagian":"sumber daya manusia"}']);
+
             });
+
         });
 
         // Kelompok Keahlian Routes
         Route::group(['prefix' => 'kelompok-keahlian', 'as' => 'kelompok-keahlian.'], function () {
-            Route::get('/list', [\App\Http\Controllers\KelompokKeahlianController::class, 'index'])->name('list')->middleware(['admin:{"is_admin":true|"bagian":"sumber daya manusia"|"is_kk":true}']);
-            Route::get('/input', [\App\Http\Controllers\KelompokKeahlianController::class, 'create'])->name('input')->middleware(['admin:{"is_admin":true|"bagian":"sumber daya manusia"|"is_kk":true}']);
-            Route::post('/store', [\App\Http\Controllers\KelompokKeahlianController::class, 'store'])->name('store')->middleware(['admin:{"is_admin":true|"bagian":"sumber daya manusia"|"is_kk":true}']);
-            Route::get('/view/{id}', [\App\Http\Controllers\KelompokKeahlianController::class, 'show'])->name('view')->middleware(['admin:{"is_admin":true|"bagian":"sumber daya manusia"|"is_kk":true}']);
-            Route::get('/edit/{id}', [\App\Http\Controllers\KelompokKeahlianController::class, 'edit'])->name('edit')->middleware(['admin:{"is_admin":true|"|"bagian":"sumber daya manusia"|"is_kk":true}']);
-            Route::post('/update/{id}', [\App\Http\Controllers\KelompokKeahlianController::class, 'update'])->name('update')->middleware(['admin:{"is_admin":true|"bagian":"sumber daya manusia"|"is_kk":true}']);
-            Route::delete('/destroy/{id}', [\App\Http\Controllers\KelompokKeahlianController::class, 'destroy'])->name('destroy')->middleware(['admin:{"is_admin":true|"bagian":"sumber daya manusia"|"is_kk":true}']);
-            Route::post('/nonaktifkan/{id}', [\App\Http\Controllers\KelompokKeahlianController::class, 'nonaktifkan'])->name('nonaktifkan')->middleware(['admin:{"is_admin":true|"bagian":"sumber daya manusia"|"is_kk":true}']);
-            Route::post('/assign-dosen/{id}', [\App\Http\Controllers\KelompokKeahlianController::class, 'assignDosen'])->name('assignDosen')->middleware(['admin:{"is_admin":true|"bagian":"sumber daya manusia"|"is_kk":true}']);
-            Route::get('/pegawai-list', [\App\Http\Controllers\KelompokKeahlianController::class, 'pegawaiList'])->name('pegawai-list')->middleware(['admin:{"is_admin":true|"bagian":"sumber daya manusia"|"is_kk":true}']);
+            Route::get('/list', [KelompokKeahlianController::class, 'index'])->name('list')->middleware(['admin:{"is_admin":true|"bagian":"sumber daya manusia"|"is_kk":true}']);
+            Route::get('/input', [KelompokKeahlianController::class, 'create'])->name('input')->middleware(['admin:{"is_admin":true|"bagian":"sumber daya manusia"|"is_kk":true}']);
+            Route::post('/store', [KelompokKeahlianController::class, 'store'])->name('store')->middleware(['admin:{"is_admin":true|"bagian":"sumber daya manusia"|"is_kk":true}']);
+            Route::get('/view/{id}', [KelompokKeahlianController::class, 'show'])->name('view')->middleware(['admin:{"is_admin":true|"bagian":"sumber daya manusia"|"is_kk":true}']);
+            Route::get('/edit/{id}', [KelompokKeahlianController::class, 'edit'])->name('edit')->middleware(['admin:{"is_admin":true|"|"bagian":"sumber daya manusia"|"is_kk":true}']);
+            Route::post('/update/{id}', [KelompokKeahlianController::class, 'update'])->name('update')->middleware(['admin:{"is_admin":true|"bagian":"sumber daya manusia"|"is_kk":true}']);
+            Route::delete('/destroy/{id}', [KelompokKeahlianController::class, 'destroy'])->name('destroy')->middleware(['admin:{"is_admin":true|"bagian":"sumber daya manusia"|"is_kk":true}']);
+            Route::post('/nonaktifkan/{id}', [KelompokKeahlianController::class, 'nonaktifkan'])->name('nonaktifkan')->middleware(['admin:{"is_admin":true|"bagian":"sumber daya manusia"|"is_kk":true}']);
+            Route::post('/assign-dosen/{id}', [KelompokKeahlianController::class, 'assignDosen'])->name('assignDosen')->middleware(['admin:{"is_admin":true|"bagian":"sumber daya manusia"|"is_kk":true}']);
+            Route::get('/pegawai-list', [KelompokKeahlianController::class, 'pegawaiList'])->name('pegawai-list')->middleware(['admin:{"is_admin":true|"bagian":"sumber daya manusia"|"is_kk":true}']);
 
             Route::group(['prefix' => 'sub', 'as' => 'sub.'], function () {
-                Route::get('/list', [\App\Http\Controllers\RefSubKelompokKeahlianController::class, 'index'])->name('list')->middleware(['admin:{"is_admin":true|"bagian":"sumber daya manusia"|"is_kk":true}']);
-                Route::get('/new', [\App\Http\Controllers\RefSubKelompokKeahlianController::class, 'create'])->name('create')->middleware(['admin:{"is_admin":true|"bagian":"sumber daya manusia"|"is_kk":true}']);
-                Route::post('/store', [\App\Http\Controllers\RefSubKelompokKeahlianController::class, 'store'])->name('store')->middleware(['admin:{"is_admin":true|"bagian":"sumber daya manusia"|"is_kk":true}']);
-                Route::post('/update/{id}', [\App\Http\Controllers\RefSubKelompokKeahlianController::class, 'update'])->name('update')->middleware(['admin:{"is_admin":true|"bagian":"sumber daya manusia"|"is_kk":true}']);
+                Route::get('/list', [RefSubKelompokKeahlianController::class, 'index'])->name('list')->middleware(['admin:{"is_admin":true|"bagian":"sumber daya manusia"|"is_kk":true}']);
+                Route::get('/new', [RefSubKelompokKeahlianController::class, 'create'])->name('create')->middleware(['admin:{"is_admin":true|"bagian":"sumber daya manusia"|"is_kk":true}']);
+                Route::post('/store', [RefSubKelompokKeahlianController::class, 'store'])->name('store')->middleware(['admin:{"is_admin":true|"bagian":"sumber daya manusia"|"is_kk":true}']);
+                Route::post('/update/{id}', [RefSubKelompokKeahlianController::class, 'update'])->name('update')->middleware(['admin:{"is_admin":true|"bagian":"sumber daya manusia"|"is_kk":true}']);
             });
 
             Route::group(['prefix' => 'dosen-with-kk', 'as' => 'dosen-with-kk.'], function () {
-                Route::get('/list', [\App\Http\Controllers\DosenHasKKController::class, 'index'])->name('list')->middleware(['admin:{"is_admin":true}'])->middleware(['admin:{"is_admin":true|"bagian":"sumber daya manusia"|"is_kk":true}']);
-                Route::get('/new', [\App\Http\Controllers\DosenHasKKController::class, 'new'])->name('new')->middleware(['admin:{"is_admin":true}'])->middleware(['admin:{"is_admin":true|"bagian":"sumber daya manusia"|"is_kk":true}']);
-                Route::post('/store', [\App\Http\Controllers\DosenHasKKController::class, 'store'])->name('store')->middleware(['admin:{"is_admin":true}'])->middleware(['admin:{"is_admin":true|"bagian":"sumber daya manusia"|"is_kk":true}']);
-                Route::get('/lepas-dosen/{DosenHasKK_id}', [\App\Http\Controllers\DosenHasKKController::class, 'lepas_dosen'])->name('lepas-dosen')->middleware(['admin:{"is_admin":true|"bagian":"sumber daya manusia"|"is_kk":true}']);
+                Route::get('/list', [DosenHasKKController::class, 'index'])->name('list')->middleware(['admin:{"is_admin":true}'])->middleware(['admin:{"is_admin":true|"bagian":"sumber daya manusia"|"is_kk":true}']);
+                Route::get('/new', [DosenHasKKController::class, 'new'])->name('new')->middleware(['admin:{"is_admin":true}'])->middleware(['admin:{"is_admin":true|"bagian":"sumber daya manusia"|"is_kk":true}']);
+                Route::post('/store', [DosenHasKKController::class, 'store'])->name('store')->middleware(['admin:{"is_admin":true}'])->middleware(['admin:{"is_admin":true|"bagian":"sumber daya manusia"|"is_kk":true}']);
+                Route::get('/lepas-dosen/{DosenHasKK_id}', [DosenHasKKController::class, 'lepas_dosen'])->name('lepas-dosen')->middleware(['admin:{"is_admin":true|"bagian":"sumber daya manusia"|"is_kk":true}']);
                 Route::get('/struktur/', [DosenHasKKController::class, 'struktur'])->name('struktur')->middleware(['admin:{"is_admin":true|"bagian":"sumber daya manusia"|"is_kk":true|"is_dosen":true}']);
                 Route::get('/table/', [DosenHasKKController::class, 'table'])->name('table')->middleware(['admin:{"is_admin":true|"bagian":"sumber daya manusia"|"is_kk":true}']);
                 Route::get('/riwayat/{id_user}', [DosenHasKKController::class, 'riwayat'])->name('riwayat')->middleware(['admin:{"is_admin":true|"bagian":"sumber daya manusia"|"is_kk":true}']);
-                Route::get('/pasang-kembali-dosen/{DosenHasKK_id}', [\App\Http\Controllers\DosenHasKKController::class, 'Aktifkan_Pemetaan'])->name('pasang-kembali-dosen')->middleware(['admin:{"is_admin":true|"bagian":"sumber daya manusia"|"is_kk":true}']);
+                Route::get('/pasang-kembali-dosen/{DosenHasKK_id}', [DosenHasKKController::class, 'Aktifkan_Pemetaan'])->name('pasang-kembali-dosen')->middleware(['admin:{"is_admin":true|"bagian":"sumber daya manusia"|"is_kk":true}']);
+
             });
 
             // COE (Center of Excellence) Routes
@@ -522,12 +530,12 @@ Route::middleware(['auth',  \App\Http\Middleware\CekFlashUser::class])->group(fu
 
         // Studi Lanjut Routes
         Route::group(['prefix' => 'studi-lanjut', 'as' => 'studi-lanjut.'], function () {
-            Route::get('/list', [\App\Http\Controllers\StudiLanjutController::class, 'index'])->name('list')->middleware(['admin:{"is_admin":true|"bagian":"sumber daya manusia"|"is_dosen":true}']);
-            Route::get('/input', [\App\Http\Controllers\StudiLanjutController::class, 'create'])->name('input')->middleware(['admin:{"is_admin":true|"bagian":"sumber daya manusia"|"is_dosen":true}']);
-            Route::post('/store', [\App\Http\Controllers\StudiLanjutController::class, 'store'])->name('store')->middleware(['admin:{"is_admin":true|"bagian":"sumber daya manusia"|"is_dosen":true}']);
-            Route::get('/view/{id}', [\App\Http\Controllers\StudiLanjutController::class, 'show'])->name('view')->middleware(['admin:{"is_admin":true|"bagian":"sumber daya manusia"|"is_dosen":true}']);
-            Route::get('/edit/{id}', [\App\Http\Controllers\StudiLanjutController::class, 'edit'])->name('edit')->middleware(['admin:{"is_admin":true|"bagian":"sumber daya manusia"|"is_dosen":true}']);
-            Route::post('/update/{id}', [\App\Http\Controllers\StudiLanjutController::class, 'update'])->name('update')->middleware(['admin:{"is_admin":true|"bagian":"sumber daya manusia"|"is_dosen":true}']);
+            Route::get('/list', [StudiLanjutController::class, 'index'])->name('list')->middleware(['admin:{"is_admin":true|"bagian":"sumber daya manusia"|"is_dosen":true}']);
+            Route::get('/input', [StudiLanjutController::class, 'create'])->name('input')->middleware(['admin:{"is_admin":true|"bagian":"sumber daya manusia"|"is_dosen":true}']);
+            Route::post('/store', [StudiLanjutController::class, 'store'])->name('store')->middleware(['admin:{"is_admin":true|"bagian":"sumber daya manusia"|"is_dosen":true}']);
+            Route::get('/view/{id}', [StudiLanjutController::class, 'show'])->name('view')->middleware(['admin:{"is_admin":true|"bagian":"sumber daya manusia"|"is_dosen":true}']);
+            Route::get('/edit/{id}', [StudiLanjutController::class, 'edit'])->name('edit')->middleware(['admin:{"is_admin":true|"bagian":"sumber daya manusia"|"is_dosen":true}']);
+            Route::post('/update/{id}', [StudiLanjutController::class, 'update'])->name('update')->middleware(['admin:{"is_admin":true|"bagian":"sumber daya manusia"|"is_dosen":true}']);
             // Route::delete('/destroy/{id}', [\App\Http\Controllers\StudiLanjutController::class, 'destroy'])->name('destroy')->middleware(['admin:{"is_admin":true|"bagian":"sumber daya manusia"|"is_dosen":true}']);
         });
     });
@@ -535,57 +543,57 @@ Route::middleware(['auth',  \App\Http\Middleware\CekFlashUser::class])->group(fu
     // Kinerja Pegawai Routes (Prefix: /kinerja_pegawai)
     Route::group(['prefix' => 'kinerja_pegawai', 'as' => 'manage.', 'middleware' => ['admin:{"is_admin":true|"and":{"bagian":"sumber daya manusia"|"range-level":[3|5]}|"range-level":[2|3]|"is_dosen":true|"is_tpa":true}']], function () {
         // Main Dashboard
-        Route::get('/', [\App\Http\Controllers\KinerjaDashboardController::class, 'index'])->name('target-kinerja.index');
+        Route::get('/', [KinerjaDashboardController::class, 'index'])->name('target-kinerja.index');
 
         // Presensi & Jam Kerja
         Route::group(['prefix' => 'presensi', 'as' => 'presensi.'], function () {
-            Route::get('/', [\App\Http\Controllers\PresensiController::class, 'index'])->name('index');
-            Route::get('/tardiness', [\App\Http\Controllers\PresensiController::class, 'tardinessReport'])->name('tardiness');
-            Route::get('/settings', [\App\Http\Controllers\PresensiController::class, 'settings'])->name('settings');
-            Route::post('/settings', [\App\Http\Controllers\PresensiController::class, 'updateSettings'])->name('settings.update');
+            Route::get('/', [PresensiController::class, 'index'])->name('index');
+            Route::get('/tardiness', [PresensiController::class, 'tardinessReport'])->name('tardiness');
+            Route::get('/settings', [PresensiController::class, 'settings'])->name('settings');
+            Route::post('/settings', [PresensiController::class, 'updateSettings'])->name('settings.update');
         });
 
         // Target Kinerja Sub-Routes
         Route::group(['as' => 'target-kinerja.'], function () {
             // CRUD Satuan Ukur
-            Route::get('/ref-satuan', [\App\Http\Controllers\RefSatuanController::class, 'index'])->name('ref-satuan.index');
-            Route::post('/ref-satuan', [\App\Http\Controllers\RefSatuanController::class, 'store'])->name('ref-satuan.store');
-            Route::put('/ref-satuan/{id}', [\App\Http\Controllers\RefSatuanController::class, 'update'])->name('ref-satuan.update');
-            Route::delete('/ref-satuan/{id}', [\App\Http\Controllers\RefSatuanController::class, 'destroy'])->name('ref-satuan.destroy');
+            Route::get('/ref-satuan', [RefSatuanController::class, 'index'])->name('ref-satuan.index');
+            Route::post('/ref-satuan', [RefSatuanController::class, 'store'])->name('ref-satuan.store');
+            Route::put('/ref-satuan/{id}', [RefSatuanController::class, 'update'])->name('ref-satuan.update');
+            Route::delete('/ref-satuan/{id}', [RefSatuanController::class, 'destroy'])->name('ref-satuan.destroy');
 
-            Route::get('/list', [\App\Http\Controllers\TargetKinerjaController::class, 'index'])->name('list');
-            Route::get('/detail/{id}', [\App\Http\Controllers\KinerjaDashboardController::class, 'targetDetail'])->name('detail');
-            Route::get('/input', [\App\Http\Controllers\TargetKinerjaController::class, 'create'])->name('input');
-            Route::post('/store', [\App\Http\Controllers\TargetKinerjaController::class, 'store'])->name('store');
-            Route::get('/view/{id}', [\App\Http\Controllers\TargetKinerjaController::class, 'show'])->name('view');
-            Route::get('/edit/{id}', [\App\Http\Controllers\TargetKinerjaController::class, 'edit'])->name('edit');
-            Route::put('/update/{id}', [\App\Http\Controllers\TargetKinerjaController::class, 'update'])->name('update');
-            Route::delete('/destroy/{id}', [\App\Http\Controllers\TargetKinerjaController::class, 'destroy'])->name('destroy');
-            Route::get('/assign/{id}', [\App\Http\Controllers\TargetKinerjaController::class, 'assign'])->name('assign');
-            Route::post('/assign/{id}', [\App\Http\Controllers\TargetKinerjaController::class, 'storeAssignment'])->name('store-assignment');
-            Route::post('/assign/{id}/pegawai/{userId}/status', [\App\Http\Controllers\TargetKinerjaController::class, 'updateAssignmentStatus'])->name('update-assignment-status');
-            Route::delete('/assign/{id}/pegawai/{userId}', [\App\Http\Controllers\TargetKinerjaController::class, 'detachPegawai'])->name('detach-pegawai');
-            Route::get('/laporan', [\App\Http\Controllers\TargetKinerjaController::class, 'laporan'])->name('laporan');
+            Route::get('/list', [TargetKinerjaController::class, 'index'])->name('list');
+            Route::get('/detail/{id}', [KinerjaDashboardController::class, 'targetDetail'])->name('detail');
+            Route::get('/input', [TargetKinerjaController::class, 'create'])->name('input');
+            Route::post('/store', [TargetKinerjaController::class, 'store'])->name('store');
+            Route::get('/view/{id}', [TargetKinerjaController::class, 'show'])->name('view');
+            Route::get('/edit/{id}', [TargetKinerjaController::class, 'edit'])->name('edit');
+            Route::put('/update/{id}', [TargetKinerjaController::class, 'update'])->name('update');
+            Route::delete('/destroy/{id}', [TargetKinerjaController::class, 'destroy'])->name('destroy');
+            Route::get('/assign/{id}', [TargetKinerjaController::class, 'assign'])->name('assign');
+            Route::post('/assign/{id}', [TargetKinerjaController::class, 'storeAssignment'])->name('store-assignment');
+            Route::post('/assign/{id}/pegawai/{userId}/status', [TargetKinerjaController::class, 'updateAssignmentStatus'])->name('update-assignment-status');
+            Route::delete('/assign/{id}/pegawai/{userId}', [TargetKinerjaController::class, 'detachPegawai'])->name('detach-pegawai');
+            Route::get('/laporan', [TargetKinerjaController::class, 'laporan'])->name('laporan');
 
             // Target Kinerja Harian
             Route::group(['prefix' => 'harian', 'as' => 'harian.'], function () {
-                Route::get('/get-induk-kpi', [\App\Http\Controllers\TargetKinerjaHarianController::class, 'getIndukKpiByResponsibility'])->name('get-induk-kpi');
-                Route::get('/list', [\App\Http\Controllers\TargetKinerjaHarianController::class, 'index'])->name('list');
-                Route::get('/input', [\App\Http\Controllers\TargetKinerjaHarianController::class, 'create'])->name('input');
-                Route::get('/edit/{id}', [\App\Http\Controllers\TargetKinerjaHarianController::class, 'edit'])->name('edit');
-                Route::post('/store', [\App\Http\Controllers\TargetKinerjaHarianController::class, 'store'])->name('store');
-                Route::put('/update/{id}', [\App\Http\Controllers\TargetKinerjaHarianController::class, 'update'])->name('update');
-                Route::get('/view/{id}', [\App\Http\Controllers\TargetKinerjaHarianController::class, 'show'])->name('view');
-                Route::delete('/destroy/{id}', [\App\Http\Controllers\TargetKinerjaHarianController::class, 'destroy'])->name('destroy');
-                Route::get('/{id}/isi', [\App\Http\Controllers\PelaporanPekerjaanController::class, 'create'])->name('isi');
-                Route::post('/{id}/submit-report', [\App\Http\Controllers\PelaporanPekerjaanController::class, 'store'])->name('submit-report');
-                Route::get('/{id}/assign', [\App\Http\Controllers\TargetKinerjaHarianController::class, 'assign'])->name('assign');
-                Route::post('/{id}/assign', [\App\Http\Controllers\TargetKinerjaHarianController::class, 'storeAssignment'])->name('store-assignment');
-                Route::post('/{id}/assign/pegawai/{userId}/status', [\App\Http\Controllers\TargetKinerjaHarianController::class, 'updateAssignmentStatus'])->name('update-assignment-status');
-                Route::delete('/{id}/assign/pegawai/{userId}', [\App\Http\Controllers\TargetKinerjaHarianController::class, 'detachPegawai'])->name('detach-pegawai');
-                Route::get('/reports', [\App\Http\Controllers\PelaporanPekerjaanController::class, 'approvalList'])->name('reports');
-                Route::get('/reports/{id}/approval', [\App\Http\Controllers\PelaporanPekerjaanController::class, 'showApproval'])->name('reports.approval');
-                Route::post('/reports/{id}/approve', [\App\Http\Controllers\PelaporanPekerjaanController::class, 'approve'])->name('reports.approve');
+                Route::get('/get-induk-kpi', [TargetKinerjaHarianController::class, 'getIndukKpiByResponsibility'])->name('get-induk-kpi');
+                Route::get('/list', [TargetKinerjaHarianController::class, 'index'])->name('list');
+                Route::get('/input', [TargetKinerjaHarianController::class, 'create'])->name('input');
+                Route::get('/edit/{id}', [TargetKinerjaHarianController::class, 'edit'])->name('edit');
+                Route::post('/store', [TargetKinerjaHarianController::class, 'store'])->name('store');
+                Route::put('/update/{id}', [TargetKinerjaHarianController::class, 'update'])->name('update');
+                Route::get('/view/{id}', [TargetKinerjaHarianController::class, 'show'])->name('view');
+                Route::delete('/destroy/{id}', [TargetKinerjaHarianController::class, 'destroy'])->name('destroy');
+                Route::get('/{id}/isi', [PelaporanPekerjaanController::class, 'create'])->name('isi');
+                Route::post('/{id}/submit-report', [PelaporanPekerjaanController::class, 'store'])->name('submit-report');
+                Route::get('/{id}/assign', [TargetKinerjaHarianController::class, 'assign'])->name('assign');
+                Route::post('/{id}/assign', [TargetKinerjaHarianController::class, 'storeAssignment'])->name('store-assignment');
+                Route::post('/{id}/assign/pegawai/{userId}/status', [TargetKinerjaHarianController::class, 'updateAssignmentStatus'])->name('update-assignment-status');
+                Route::delete('/{id}/assign/pegawai/{userId}', [TargetKinerjaHarianController::class, 'detachPegawai'])->name('detach-pegawai');
+                Route::get('/reports', [PelaporanPekerjaanController::class, 'approvalList'])->name('reports');
+                Route::get('/reports/{id}/approval', [PelaporanPekerjaanController::class, 'showApproval'])->name('reports.approval');
+                Route::post('/reports/{id}/approve', [PelaporanPekerjaanController::class, 'approve'])->name('reports.approve');
             });
         });
 
@@ -610,36 +618,38 @@ Route::middleware(['auth',  \App\Http\Middleware\CekFlashUser::class])->group(fu
         })->name('dashboard.target.input');
         Route::get('/dashboard/target/{action}/{id?}', function ($action, $id = null) {
             $action = in_array($action, ['approval', 'edit', 'input']) ? $action : 'detail';
+
             return view("kinerja_pegawai.dashboard_target.$action", ['id' => $id]);
         })->where('action', 'approval|edit|input')->name('dashboard.target.action');
 
         // Export Routes
-        Route::get('/laporan/export', [\App\Http\Controllers\KinerjaExportController::class, 'export'])->name('laporan.export');
-        Route::get('/laporan/print', [\App\Http\Controllers\KinerjaExportController::class, 'exportPrint'])->name('laporan.print');
+        Route::get('/laporan/export', [KinerjaExportController::class, 'export'])->name('laporan.export');
+        Route::get('/laporan/print', [KinerjaExportController::class, 'exportPrint'])->name('laporan.print');
 
         // Monitoring Route (Fitur 2G2)
-        Route::get('/monitoring', [\App\Http\Controllers\KinerjaDashboardController::class, 'monitoring'])->name('monitoring.index');
+        Route::get('/monitoring', [KinerjaDashboardController::class, 'monitoring'])->name('monitoring.index');
 
         // Laporan Output & Analytics (Phase 4)
-        Route::get('/laporan-efektivitas', [\App\Http\Controllers\PelaporanPekerjaanController::class, 'laporanIndividual'])->name('laporan.efektivitas');
-        Route::get('/reporting', [\App\Http\Controllers\PelaporanPekerjaanController::class, 'reporting'])->name('laporan.reporting');
-        Route::get('/laporan-capaian-tw', [\App\Http\Controllers\TargetKinerjaController::class, 'laporanCapaian'])->name('laporan.capaian-tw');
+        Route::get('/laporan-efektivitas', [PelaporanPekerjaanController::class, 'laporanIndividual'])->name('laporan.efektivitas');
+        Route::get('/reporting', [PelaporanPekerjaanController::class, 'reporting'])->name('laporan.reporting');
+        Route::get('/laporan-capaian-tw', [TargetKinerjaController::class, 'laporanCapaian'])->name('laporan.capaian-tw');
 
         Route::get('/laporan/target/{id?}', function ($id = null) {
             return view('kinerja_pegawai.laporan_target.detail', ['id' => $id]);
         })->name('laporan.target.detail');
 
         // Role Switcher
-        Route::get('/switch-role/{role_name}', [\App\Http\Controllers\TestingSIMDKController::class, 'switchRole'])
+        Route::get('/switch-role/{role_name}', [TestingSIMDKController::class, 'switchRole'])
             ->name('switch-role')
             ->middleware(['admin:{"is_admin":true|"bagian":"sumber daya manusia"}']);
-        Route::get('/leave-impersonate', [\App\Http\Controllers\TestingSIMDKController::class, 'leaveImpersonate'])
+        Route::get('/leave-impersonate', [TestingSIMDKController::class, 'leaveImpersonate'])
             ->name('leave-impersonate');
     });
 
     Route::group([
         'prefix' => 'dupak',
         'as' => 'dupak.',
+        // 'middleware' => ['auth'],
     ], function () {
         // catatan:
         // - pengajuan: hanya dosen/pemilik (di controller)
@@ -709,6 +719,4 @@ Route::middleware(['auth', 'admin:admin'])->prefix('admin')->name('admin.')->gro
     Route::delete('/users/{user}', [AdminController::class, 'deleteUser'])->name('users.delete');
 });
 
-
-
-require __DIR__ . '/auth.php';
+require __DIR__.'/auth.php';
