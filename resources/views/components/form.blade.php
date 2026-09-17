@@ -42,7 +42,7 @@
         <button type="submit" id="button_{{ $id }}" onclick="form_loading(this)"
             class="px-6 py-2 active:scale-95 bg-black text-white rounded-md font-medium hover:bg-gray-800 transition flex items-center gap-2">
 
-            <?xml version="1.0" encoding="utf-8"?>
+            {{-- <?xml version="1.0" encoding="utf-8"?> --}}
             <svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg"
                 xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" fill="white" viewBox="0 0 122.88 108.95"
                 style="enable-background:new 0 0 122.88 108.95" xml:space="preserve">
