@@ -28,62 +28,9 @@ class UserSeeder extends Seeder
     {
         RefResearchCoe::factory()->count(5)->create();
 
-
-        User::factory()->create([
-            'id' => '342q-234t-234x-432i',
-            'nama_lengkap' => 'Admin 2 Telkom University',
-            'email_institusi' => 'mardiahresti@telkomuniversity.ac.id',
-            'email_pribadi' => 'mardiahresti@gmail.com',
-            'is_admin' => 1,
-            'is_new' => 0,
-            'email_verified_at' => now(),
-        ]);
-
-        User::factory()->create([
-            'id' => '342q-234t-234x-432y',
-            'nama_lengkap' => 'Hany SDM TUS',
-            'email_institusi' => 'hany@telkomuniversity.ac.id',
-            'email_pribadi' => 'lailyhanilhfs@gmail.com',
-            'is_admin' => 1,
-            'is_new' => 0,
-            'email_verified_at' => now(),
-        ]);
-
-        User::factory()->create([
-            'id' => '342q-234t-234x-432r',
-            'nama_lengkap' => 'Admin Telkom University',
-            'email_institusi' => 'admin@telkomuniversity.ac.id',
-            'is_admin' => 1,
-            'is_new' => 0,
-            'email_verified_at' => now(),
-        ]);
-
-        User::factory()->create([
-            'id' => '342q-234t-234x-4325',
-            'nama_lengkap' => 'Dosen Telkom University',
-            'email_institusi' => 'dosen@telkomuniversity.ac.id',
-            'is_admin' => 0,
-            'is_new' => 0,
-            'email_verified_at' => now(),
-        ]);
-
-        User::factory()->create([
-            'id' => '342q-234t-234x-4o25',
-            'nama_lengkap' => 'TPA Telkom University',
-            'email_institusi' => 'tpa@telkomuniversity.ac.id',
-            'is_admin' => 0,
-            'is_new' => 0,
-            'email_verified_at' => now(),
-        ]);
-
-        $needs = DB::table('formations as a')
-            ->sum('a.kuota');
-        // dd();
-        User::factory()->count(((int) $needs) - 1)->create([
-            'is_admin' => 0,
-        ]);
-        // User::factory();
-
+        // $this->for_Development();
+        $this->for_Deployment();
+        dd(count(User::all()));
 
         $refJenjangPendidikan = \App\Models\RefJenjangPendidikan::all();
         $refPangkatGolongan = \App\Models\RefPangkatGolongan::all();
@@ -562,5 +509,71 @@ class UserSeeder extends Seeder
         } else {
             return $penambahan;
         }
+    }
+
+    public function  for_Deployment(){
+        User::factory()->create([
+            'id' => '342q-234t-234x-432r',
+            'nama_lengkap' => 'Admin Telkom University',
+            'email_institusi' => 'admin@telkomuniversity.ac.id',
+            'is_admin' => 1,
+            'is_new' => 0,
+            'email_verified_at' => now(),
+        ]);
+    }
+    public function for_Development(){
+        User::factory()->create([
+            'id' => '342q-234t-234x-432i',
+            'nama_lengkap' => 'Admin 2 Telkom University',
+            'email_institusi' => 'mardiahresti@telkomuniversity.ac.id',
+            'email_pribadi' => 'mardiahresti@gmail.com',
+            'is_admin' => 1,
+            'is_new' => 0,
+            'email_verified_at' => now(),
+        ]);
+
+        User::factory()->create([
+            'id' => '342q-234t-234x-432y',
+            'nama_lengkap' => 'Hany SDM TUS',
+            'email_institusi' => 'hany@telkomuniversity.ac.id',
+            'email_pribadi' => 'lailyhanilhfs@gmail.com',
+            'is_admin' => 1,
+            'is_new' => 0,
+            'email_verified_at' => now(),
+        ]);
+
+        User::factory()->create([
+            'id' => '342q-234t-234x-432r',
+            'nama_lengkap' => 'Admin Telkom University',
+            'email_institusi' => 'admin@telkomuniversity.ac.id',
+            'is_admin' => 1,
+            'is_new' => 0,
+            'email_verified_at' => now(),
+        ]);
+
+        User::factory()->create([
+            'id' => '342q-234t-234x-4325',
+            'nama_lengkap' => 'Dosen Telkom University',
+            'email_institusi' => 'dosen@telkomuniversity.ac.id',
+            'is_admin' => 0,
+            'is_new' => 0,
+            'email_verified_at' => now(),
+        ]);
+
+        User::factory()->create([
+            'id' => '342q-234t-234x-4o25',
+            'nama_lengkap' => 'TPA Telkom University',
+            'email_institusi' => 'tpa@telkomuniversity.ac.id',
+            'is_admin' => 0,
+            'is_new' => 0,
+            'email_verified_at' => now(),
+        ]);
+
+        $needs = DB::table('formations as a')
+            ->sum('a.kuota');
+        // dd();
+        User::factory()->count(((int) $needs) - 1)->create([
+            'is_admin' => 0,
+        ]);
     }
 }
